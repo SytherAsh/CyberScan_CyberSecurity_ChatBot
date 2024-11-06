@@ -1,0 +1,8 @@
+langchain
+langchain-community
+faiss-cpu
+transformers
+pypdf
+langchain_groq
+sentence_transformers
+django
