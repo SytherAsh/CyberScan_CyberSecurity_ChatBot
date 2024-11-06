@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybersecurity Assessment Bot</title>
+</head>
+<body>
+    <h1>Welcome to the Cybersecurity Assessment Bot</h1>
+    <button onclick="startAssessment()">Start Assessment</button>
+    <div id="questions"></div>
+
+    <script>
+        function startAssessment() {
+            fetch('/ask-question/')
+                .then(response => response.json())
+                .then(data => {
+                    let questions = data.questions;
+                    let questionsDiv = document.getElementById('questions');
+                    questions.forEach((question, index) => {
+                        let questionDiv = document.createElement('div');
+                        questionDiv.innerHTML = `
+                            <p>${question}</p>
+                            <input type="text" id="answer_${index}" placeholder="Your answer here">
+                            <button onclick="submitAnswer(${index})">Submit Answer</button>
+                        `;
+                        questionsDiv.appendChild(questionDiv);
+                    });
+                });
+        }
+
+        function submitAnswer(index) {
+            let answer = document.getElementById(`answer_${index}`).value;
+            fetch('/submit-answer/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({answer: answer, domain: 'Network Security'})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Score: ' + data.score);
+                });
+        }
+    </script>
+</body>
+</html>
