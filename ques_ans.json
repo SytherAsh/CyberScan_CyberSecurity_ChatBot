@@ -1,6 +1,6 @@
 {
   "Network Security": {
-    "question": "How do you ensure the network is secure against unauthorized access and common vulnerabilities?",
+    "question": " ",
     "answer": "To mitigate risks, we enforce a layered security approach using firewalls, intrusion detection/prevention systems (IDS/IPS), VPNs for secure remote access, and strong network segmentation. Regular vulnerability scans and penetration testing are conducted, and network traffic is monitored for anomalies. Compliance standards like NIST SP 800-53 and ISO 27001 require strict access controls and periodic monitoring to secure network infrastructure."
   },
   "Identity and Access Management (IAM)": {
