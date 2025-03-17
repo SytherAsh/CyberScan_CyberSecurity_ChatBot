@@ -1,43 +1,46 @@
 from django.shortcuts import render
-from django.http import JsonResponse
-from .utils import main, assess_domain, load_cybersecurity_domains
-from .scoring import calculate_risk_score, verify_compliance
-from .visual import visualize_risk_assessment, generate_report
-from .models import AssessmentResult, DomainAssessment
+import time
+import logging
+from .ml_utils import process_query
 
-def run_assessment_view(request):
-    file_paths = ["/path/to/pdf"]  # Hardcode or get from request
-    json_path = "/path/to/brain.json"
-    max_predefined = int(request.GET.get('max_predefined', 2))
-    max_dynamic = int(request.GET.get('max_dynamic', 1))
-    
-    retrieval_qa, llm = main(file_paths, json_path)
-    raw_domains = load_cybersecurity_domains(json_path)
-    domains = {name: DomainData(**data) for name, data in raw_domains.items()}
-    documents = load_documents(file_paths)
-    extracted_data = analyze_document_content(documents, domains)
-    previous_questions = []
-    assessment_result = AssessmentResult(domains={name: DomainAssessment(domain_name=name) for name in domains.keys()})
-    
-    query_cache = {}
-    def cached_invoke(query: str) -> str:
-        if query not in query_cache:
-            query_cache[query] = retrieval_qa.invoke({"query": query})['result'].lower()
-        return query_cache[query]
-    
-    for domain_name, domain_data in domains.items():
-        domain_assessment = assess_domain(domain_name, domain_data, previous_questions, extracted_data, retrieval_qa, llm, cached_invoke)
-        assessment_result.domains[domain_name] = domain_assessment
-    
-    assessment_result = calculate_risk_score(assessment_result, extracted_data, domains, retrieval_qa, cached_invoke)
-    assessment_result = verify_compliance(assessment_result, extracted_data, domains, retrieval_qa, cached_invoke)
-    
-    risk_scores = {k: {"score": v.risk_score, "details": v.risk_details} for k, v in assessment_result.domains.items()}
-    compliance_results = {k: v.compliance for k, v in assessment_result.domains.items()}
-    report = generate_report(risk_scores, compliance_results, extracted_data, assessment_result.overall_risk_score)
-    
-    return JsonResponse({
-        "overall_risk_score": assessment_result.overall_risk_score,
-        "domains": {k: v.dict() for k, v in assessment_result.domains.items()},
-        "report": report
-    })
+logger = logging.getLogger(__name__)
+
+def query_view(request):
+    """Handle user queries and display chat history."""
+    # Initialize chat history in session
+    if 'chat_history' not in request.session:
+        request.session['chat_history'] = []
+
+    if request.method == 'POST':
+        query = request.POST.get('query', '').strip()
+        if not query:
+            logger.warning("Empty query received")
+            return render(request, 'index.html', {'error': 'Please enter a query'})
+
+        # Security: Validate input length
+        if len(query) > 1000:
+            logger.warning(f"Query too long: {len(query)} characters")
+            return render(request, 'index.html', {'error': 'Query exceeds maximum length'})
+
+        try:
+            start_time = time.time()
+            chat_history = request.session['chat_history']
+            answer = process_query(query, chat_history)
+            execution_time = time.time() - start_time
+
+            # Update chat history (limit to 10 entries for performance)
+            chat_history.append({"question": query, "answer": answer})
+            request.session['chat_history'] = chat_history[-10:]
+            logger.info(f"Query processed in {execution_time:.3f} seconds")
+
+            return render(request, 'index.html', {
+                'query': query,
+                'answer': answer,
+                'execution_time': f"{execution_time:.3f} seconds",
+                'chat_history': chat_history
+            })
+        except Exception as e:
+            logger.error(f"Query processing failed: {e}")
+            return render(request, 'index.html', {'error': 'An error occurred. Please try again.'})
+
+    return render(request, 'index.html', {'chat_history': request.session['chat_history']})

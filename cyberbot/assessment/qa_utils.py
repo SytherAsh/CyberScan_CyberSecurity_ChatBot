@@ -4,8 +4,10 @@ from transformers import pipeline
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain.memory import ConversationBufferMemory
 import logging
+
 logger = logging.getLogger(__name__)
 summarizer = None
+
 from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import PromptTemplate
 
@@ -26,6 +28,10 @@ def setup_retrieval_qa(llm, retriever):
     )
     print("ConversationalRetrievalChain setup completed")
     return retrieval_qa
+
+
+
+
 
 def get_summarizer():
     """Lazily load the summarization model."""

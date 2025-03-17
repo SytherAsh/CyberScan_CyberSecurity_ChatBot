@@ -12,6 +12,9 @@ from typing import List
 import logging
 from threading import Lock
 
+from pydantic import BaseModel
+from transformers import pipeline
+
 logger = logging.getLogger(__name__)
 lock = Lock()
 
@@ -100,3 +103,4 @@ def process_query(query: str, chat_history: List[dict]) -> str:
     answer = result["answer"]
     # print(f"Query processed with answer: {answer[:50]}...")
     return answer
+
