@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybersecurity Chatbot</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .chat-container { max-width: 800px; margin: auto; }
+        .history { margin-top: 20px; border: 1px solid #ccc; padding: 10px; }
+        .history-item { margin-bottom: 10px; }
+        .question { font-weight: bold; color: #2c3e50; }
+        .answer { color: #34495e; }
+        .error { color: red; }
+        .metrics { font-style: italic; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h1>Cybersecurity Chatbot</h1>
+        
+        <!-- Query Form -->
+        <form method="POST" action="/query/">
+            {% csrf_token %}
+            <label for="query">Ask a question:</label><br>
+            <input type="text" id="query" name="query" value="{{ query|default:'' }}" style="width: 70%; padding: 5px;">
+            <input type="submit" value="Submit" style="padding: 5px 10px;">
+        </form>
+
+        <!-- Error Message -->
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <!-- Answer and Metrics -->
+        {% if answer %}
+            <h2>Answer:</h2>
+            <p>{{ answer }}</p>
+            <p class="metrics">Execution Time: {{ execution_time }}</p>
+        {% endif %}
+
+        <!-- Chat History -->
+        {% if chat_history %}
+            <div class="history">
+                <h2>Chat History</h2>
+                {% for entry in chat_history reversed %}
+                    <div class="history-item">
+                        <p class="question">Q: {{ entry.question }}</p>
+                        <p class="answer">A: {{ entry.answer }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
