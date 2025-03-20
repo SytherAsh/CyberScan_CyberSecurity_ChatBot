@@ -70,23 +70,81 @@ def setup_llm():
     except Exception as e:
         logger.error(f"LLM setup failed: {e}")
         raise
+import logging
+from threading import Lock
+from typing import List, Optional
+from .utils import load_documents, process_pdf_files  # Assuming these are in utils.py
 
-def initialize_models():
-    """Thread-safe model initialization."""
+logger = logging.getLogger(__name__)
+
+# Global variables (assuming these are defined elsewhere in your module)
+llm = None
+embeddings = None
+vectorstore = None
+retrieval_qa = None
+INITIALIZED = False
+lock = Lock()
+
+def initialize_models(pdf_files: Optional[List[str]] = None) -> bool:
+    """Thread-safe model initialization with optional PDF files.
+    
+    Args:
+        pdf_files: List of PDF file paths to process. If None, uses files in PDF_DIR.
+    
+    Returns:
+        bool: True if initialization succeeded, False otherwise.
+    """
     global llm, embeddings, vectorstore, retrieval_qa, INITIALIZED
+    
     with lock:
-        if not INITIALIZED:
-            embeddings = create_embeddings()
-            documents = load_documents()
+        try:
+            # If already initialized and no new files, skip unless forcing reinitialization
+            if INITIALIZED and not pdf_files:
+                logger.info("Models already initialized, no new files provided")
+                return True
+            
+            # Load documents from provided files or default directory
+            documents = load_documents(pdf_files) if pdf_files else load_documents()
+            
+            # If no documents are found, log and return False instead of raising an error
             if not documents:
-                raise ValueError("No documents found")
+                logger.warning("No documents found for model initialization")
+                return False
+            
+            # Process the documents
+            embeddings = create_embeddings()
             chunks = split_documents(documents)
             vectorstore = create_vectorstore(chunks, embeddings)
             llm = setup_llm()
             retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
             retrieval_qa = setup_retrieval_qa(llm, retriever)
+            
+            # Mark as initialized only if successful
             INITIALIZED = True
-            logger.info("All models initialized")
+            logger.info(f"Models initialized with {len(documents)} documents")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize models: {str(e)}")
+            INITIALIZED = False  # Reset if initialization fails
+            return False
+        
+# def initialize_models():
+#     """Thread-safe model initialization."""
+#     global llm, embeddings, vectorstore, retrieval_qa, INITIALIZED
+#     with lock:
+#         if not INITIALIZED:
+#             embeddings = create_embeddings()
+#             documents = load_documents()
+#             if not documents:
+#                 raise ValueError("No documents found")
+#             chunks = split_documents(documents)
+#             vectorstore = create_vectorstore(chunks, embeddings)
+#             llm = setup_llm()
+#             retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+#             retrieval_qa = setup_retrieval_qa(llm, retriever)
+#             INITIALIZED = True
+#             logger.info("All models initialized")
 
 
 def process_query(query: str, chat_history: List[dict]) -> str:

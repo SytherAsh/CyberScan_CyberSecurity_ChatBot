@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Upload | Modern Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <form method="post" enctype="multipart/form-data" class="w-full max-w-md bg-white rounded-xl shadow-lg p-6 space-y-6" id="uploadForm">
+        {% csrf_token %}
+        
+        <!-- Upload Section -->
+        <div class="space-y-4">
+            <h1 class="text-3xl font-bold text-gray-800 text-center">Upload PDF</h1>
+            
+            <!-- Drag & Drop Zone -->
+            <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center transition-colors duration-300 hover:border-blue-500 hover:bg-blue-50 cursor-pointer">
+                <i class="fas fa-file-pdf text-4xl text-blue-500 mb-4"></i>
+                <p class="text-gray-600 mb-2">Drag and drop your PDF here</p>
+                <p class="text-gray-400 text-sm">or</p>
+                <input type="file" name="pdf_file" id="fileInput" accept=".pdf" required 
+                       class="hidden">
+                <label for="fileInput" class="inline-block mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-300 cursor-pointer">
+                    Browse Files
+                </label>
+            </div>
+
+            <!-- File Preview -->
+            <div id="filePreview" class="hidden items-center justify-between bg-gray-50 p-4 rounded-lg">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-file text-blue-500"></i>
+                    <span id="fileName" class="font-medium text-gray-700"></span>
+                </div>
+                <i class="fas fa-check-circle text-green-500"></i>
+            </div>
+
+            <!-- Loading Animation -->
+            <div id="loading" class="hidden justify-center">
+                <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="submitBtn"
+                    class="w-full py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-300">
+                Upload PDF
+            </button>
+        </div>
+    </form>
+
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const filePreview = document.getElementById('filePreview');
+        const fileName = document.getElementById('fileName');
+        const loading = document.getElementById('loading');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // Highlight drop zone when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        // Handle dropped files
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        // Handle file selection
+        fileInput.addEventListener('change', function(e) {
+            handleFiles(this.files);
+        });
+
+        function preventDefaults (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function highlight(e) {
+            dropZone.classList.add('border-blue-500', 'bg-blue-50');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf') {
+                    fileName.textContent = file.name;
+                    filePreview.classList.remove('hidden');
+                    dropZone.classList.add('hidden');
+                }
+            }
+        }
+
+        // Form submission handler
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (fileInput.files.length > 0) {
+                submitBtn.classList.add('hidden');
+                loading.classList.remove('hidden');
+        
+                const formData = new FormData(this);
+                
+                try {
+                    const response = await fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+        
+                    if (response.ok) {
+                        // Successful upload - redirect to query interface
+                        window.location.href = "{% url 'query_api' %}";
+                    } else {
+                        const error = await response.text();
+                        alert(`Upload failed: ${error}`);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Network error - please try again');
+                } finally {
+                    loading.classList.add('hidden');
+                    submitBtn.classList.remove('hidden');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

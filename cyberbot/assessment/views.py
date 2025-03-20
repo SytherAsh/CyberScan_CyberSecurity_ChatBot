@@ -1,10 +1,57 @@
 from django.shortcuts import render
+from django.http import HttpResponse
+from django.conf import settings
+from typing import List
+import os
+from django.shortcuts import redirect, reverse
 import time
 import logging
 from .ml_utils import process_query
 
 logger = logging.getLogger(__name__)
 
+#from django.shortcuts import render
+from .utils import process_pdf_files
+from .ml_utils import initialize_models
+
+def upload_pdf(request):
+    if request.method == 'POST':
+        pdf_file = request.FILES.get('pdf_file')
+        if not pdf_file:
+            logger.error("No PDF file uploaded")
+            return HttpResponse("No file uploaded", status=400)
+        
+        if not pdf_file.name.endswith('.pdf'):
+            logger.error("Uploaded file is not a PDF")
+            return HttpResponse("Please upload a PDF file", status=400)
+        
+        try:
+            upload_dir = settings.PDF_DIR
+            if not os.path.exists(upload_dir):
+                os.makedirs(upload_dir)
+            
+            file_path = os.path.join(upload_dir, pdf_file.name)
+            with open(file_path, 'wb+') as destination:
+                for chunk in pdf_file.chunks():
+                    destination.write(chunk)
+            
+            logger.info(f"Successfully uploaded PDF: {pdf_file.name}")
+            
+            # Process the uploaded file
+            pdf_files = process_pdf_files([file_path])
+            
+            # Initialize models with the uploaded file
+            initialize_models()
+            logger.info("Models initialized with uploaded PDF")
+            
+            # Redirect to query endpoint
+            return redirect(reverse('query_api'))
+            
+        except Exception as e:
+            logger.error(f"Error processing PDF: {str(e)}")
+            return HttpResponse(f"Error: {str(e)}", status=500)
+    
+    return render(request, 'upload.html')
 def query_view(request):
     """Handle user queries and display chat history."""
     # Initialize chat history in session
